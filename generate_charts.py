@@ -387,7 +387,7 @@ def create_heatmap(results: dict, output_dir: str):
         results: Słownik z wynikami
         output_dir: Folder do zapisu wykresów
     """
-    metrics = ['precyzja', 'czułość', 'F1', 'F2']
+    metrics = ['precyzja', 'czułość', 'F1', 'F2', 'MCC']
     
     # Przygotowanie danych
     labels = []
@@ -405,10 +405,14 @@ def create_heatmap(results: dict, output_dir: str):
         return
     
     data_matrix = np.array(data_matrix)
+
+    # MCC jest w zakresie [-1, 1] — normalizujemy tylko do wyświetlania kolorów
+    display_matrix = data_matrix.copy()
+    display_matrix[:, -1] = (data_matrix[:, -1] + 1) / 2  # MCC: [-1,1] -> [0,1]
     
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(12, 8))
     
-    im = ax.imshow(data_matrix, cmap='RdYlGn', aspect='auto', vmin=0, vmax=1)
+    im = ax.imshow(display_matrix, cmap='RdYlGn', aspect='auto', vmin=0, vmax=1)
     
     # Ustawienia osi
     ax.set_xticks(np.arange(len(metrics)))
@@ -419,16 +423,17 @@ def create_heatmap(results: dict, output_dir: str):
     # Rotacja etykiet osi X
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
     
-    # Dodanie wartości do komórek
+    # Dodanie wartości do komórek (oryginalne wartości, nie znormalizowane)
     for i in range(len(labels)):
         for j in range(len(metrics)):
-            value = data_matrix[i, j]
-            text_color = 'white' if value < 0.4 or value > 0.8 else 'black'
-            text = ax.text(j, i, f'{value:.2f}',
+            display_val = display_matrix[i, j]
+            real_val = data_matrix[i, j]
+            text_color = 'white' if display_val < 0.4 or display_val > 0.8 else 'black'
+            text = ax.text(j, i, f'{real_val:.2f}',
                           ha="center", va="center", color=text_color, fontsize=10)
     
     ax.set_title(
-        'Porównanie miar: czułości, precyzji, miary F1 i miary F2\n'
+        'Porównanie miar: czułości, precyzji, miary F1, miary F2 i miary MCC\n'
         'w mapie cieplnej dla wybranych dużych modeli językowych\n'
         'oraz podejścia klasycznego i autorskiego łańcuchowego'
     )
