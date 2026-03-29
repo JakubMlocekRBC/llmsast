@@ -296,7 +296,8 @@ def create_model_comparison_chart(results: dict, output_dir: str):
             for rect, value, is_present in zip(rects, values, present_mask):
                 if is_present:
                     height = rect.get_height()
-                    ax.annotate(f'{value:.2f}',
+                    fmt = f'{value:.4f}' if value < 0.1 else f'{value:.2f}'
+                    ax.annotate(fmt,
                                 xy=(rect.get_x() + rect.get_width() / 2, height),
                                 xytext=(0, 3),
                                 textcoords="offset points",
