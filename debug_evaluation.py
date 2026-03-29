@@ -1,6 +1,6 @@
 import json
 import sys
-from agents_logic_old import CodeAgents
+from agents_logic import CodeAgents
 
 def extract_simple_verdict_and_report(text: str) -> dict:
     """

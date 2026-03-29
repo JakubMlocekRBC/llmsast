@@ -1,1 +1,7 @@
-{"tp": 0, "fp": 0, "tn": 130, "fn": 130, "current_index": 260}
+{
+  "tp": 1,
+  "fp": 3,
+  "tn": 293,
+  "fn": 285,
+  "current_index": 622
+}

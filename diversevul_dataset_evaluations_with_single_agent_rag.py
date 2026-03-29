@@ -35,7 +35,8 @@ except Exception:
 # CONFIG (from create_rag_db.py / .env)
 # ---------------------------------------------------------------------------
 LM_STUDIO_URL = os.getenv("LM_STUDIO_URL", "https://10.147.18.200:1234/v1")
-LM_STUDIO_KEY = os.getenv("LM_STUDIO_KEY", "Bearer LLM-abcde")
+LM_STUDIO_KEY = os.getenv("LM_STUDIO_KEY")
+EMBEDDING_URL = os.getenv("EMBEDDING_URL", "http://localhost:1234/v1")
 EMBEDDING_MODEL_ID = os.getenv("EMBEDDING_MODEL_ID", "text-embedding-nomic-embed-text-v1.5")
 VECTOR_SIZE = int(os.getenv("VECTOR_SIZE", "768"))
 MAX_EMBED_CHARS = int(os.getenv("MAX_EMBED_CHARS", "32000"))
@@ -121,9 +122,9 @@ def normalize_lm_studio_key(key: str) -> str:
 
 
 def init_embedding_client() -> OpenAI:
-    http_client = httpx.Client(verify=False, timeout=120.0)
+    http_client = httpx.Client(timeout=120.0)
     return OpenAI(
-        base_url=LM_STUDIO_URL,
+        base_url=EMBEDDING_URL,
         api_key=normalize_lm_studio_key(LM_STUDIO_KEY),
         http_client=http_client,
     )

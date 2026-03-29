@@ -29,7 +29,7 @@ except Exception:
     pass
 
 # Embeddingi – LM Studio / OpenAI-compatible
-LM_STUDIO_URL = os.getenv("LM_STUDIO_URL", "https://10.147.18.200:1234/v1")
+LM_STUDIO_URL = os.getenv("LM_STUDIO_URL", "http://localhost:1234/v1")
 LM_STUDIO_KEY = os.getenv("LM_STUDIO_KEY", "Bearer LLM-abcde")
 EMBEDDING_MODEL_ID = os.getenv("EMBEDDING_MODEL_ID", "text-embedding-nomic-embed-text-v1.5")
 VECTOR_SIZE = int(os.getenv("VECTOR_SIZE", "768"))  # Nomic v1.5
@@ -62,7 +62,7 @@ def init_embedding_client() -> OpenAI:
     if api_key.lower().startswith("bearer "):
         api_key = api_key.split(" ", 1)[1]
 
-    http_client = httpx.Client(verify=False, timeout=120.0)
+    http_client = httpx.Client(timeout=120.0)
     client = OpenAI(base_url=LM_STUDIO_URL, api_key=api_key, http_client=http_client)
 
     print(f"[Init] Embedding endpoint: {LM_STUDIO_URL}")
