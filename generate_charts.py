@@ -51,7 +51,7 @@ def load_results(results_dir: str, exclude_ragonhunter: bool = False, exclude_al
         # Granite-4h-Tiny
         'Granite-4h-Tiny': {
             'Podejście klasyczne': 'granite/diversevul_single_agent_progress.json',
-            'Podejście klasyczne + RAG': 'granite/diversevul_single_agent_rag_progress .json',
+            'Podejście klasyczne + RAG': 'granite/diversevul_single_agent_rag_progress.json',
             'Podejście łańcuchowe': 'granite/diversevul_multi_agent_progress.json',
             'Podejście łańcuchowe + RAG (dla agenta detekcji i agenta weryfikacji)': 'granite/diversevul_multi_agent_rag_progress.json',
             'Podejście łańcuchowe + RAG (dla agenta weryfikacji)': 'granite/diversevul_multi_agent_ragonhunter_progress.json',
