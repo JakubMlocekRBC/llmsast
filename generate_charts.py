@@ -12,6 +12,110 @@ import matplotlib.ticker as mticker
 from matplotlib.lines import Line2D
 from pathlib import Path
 
+
+NO_RAG_CHARTS_SUBDIR = 'ewaluacje_bez_rag'
+ENGLISH_CHARTS_SUBDIR = 'english'
+NO_RAGONHUNTER_CHARTS_SUBDIR = 'bez_ragonhunter'
+
+APPROACH_LABELS = {
+    'Podejście klasyczne': {
+        'pl': 'Podejście klasyczne',
+        'en': 'Single-agent approach',
+    },
+    'Podejście klasyczne + RAG': {
+        'pl': 'Podejście klasyczne + RAG',
+        'en': 'Single-agent approach + RAG',
+    },
+    'Podejście łańcuchowe': {
+        'pl': 'Podejście łańcuchowe',
+        'en': 'Multi-agent approach',
+    },
+    'Podejście łańcuchowe + RAG (dla agenta detekcji i agenta weryfikacji)': {
+        'pl': 'Podejście łańcuchowe + RAG (dla agenta detekcji i agenta weryfikacji)',
+        'en': 'Multi-agent approach + RAG (detection and verification agents)',
+    },
+    'Podejście łańcuchowe + RAG (dla agenta weryfikacji)': {
+        'pl': 'Podejście łańcuchowe + RAG (dla agenta weryfikacji)',
+        'en': 'Multi-agent approach + RAG (verification agent)',
+    },
+}
+
+METRIC_LABELS = {
+    'precyzja': {'pl': 'precyzja', 'en': 'Precision'},
+    'czułość': {'pl': 'czułość', 'en': 'Recall'},
+    'Dokładność': {'pl': 'Dokładność', 'en': 'Accuracy'},
+    'Swoistość': {'pl': 'Swoistość', 'en': 'Specificity'},
+    'Zbalansowana dokładność': {'pl': 'Zbalansowana dokładność', 'en': 'Balanced Accuracy'},
+    'F1': {'pl': 'F1', 'en': 'F1'},
+    'F2': {'pl': 'F2', 'en': 'F2'},
+    'MCC': {'pl': 'MCC', 'en': 'MCC'},
+    'FPR': {'pl': 'FPR', 'en': 'FPR'},
+    'FNR': {'pl': 'FNR', 'en': 'FNR'},
+    'NPV': {'pl': 'NPV', 'en': 'NPV'},
+    'TP': {'pl': 'TP', 'en': 'TP'},
+    'FP': {'pl': 'FP', 'en': 'FP'},
+    'TN': {'pl': 'TN', 'en': 'TN'},
+    'FN': {'pl': 'FN', 'en': 'FN'},
+}
+
+OUTPUT_FILE_NAMES = {
+    'pl': {
+        'main_comparison': 'porownanie_glowne',
+        'radar_chart': 'wykres_radarowy',
+        'heatmap': 'mapa_cieplna',
+        'grouped_metrics': 'metryki_wszystkie_konfiguracje',
+        'f_scores': 'porownanie_f1_f2',
+        'precision_recall': 'porownanie_precyzja_czulosc',
+        'mcc_balanced_accuracy': 'porownanie_mcc_balanced_accuracy',
+        'scatter': 'scatter_precyzja_czulosc_f1',
+        'summary_table': 'tabela_wynikow',
+    },
+    'en': {
+        'main_comparison': 'main_comparison',
+        'radar_chart': 'radar_chart',
+        'heatmap': 'heatmap',
+        'grouped_metrics': 'all_configurations_metrics',
+        'f_scores': 'comparison_f1_f2',
+        'precision_recall': 'comparison_precision_recall',
+        'mcc_balanced_accuracy': 'comparison_mcc_balanced_accuracy',
+        'scatter': 'scatter_precision_recall_f1',
+        'summary_table': 'results_table',
+    },
+}
+
+METRIC_FILE_STEMS = {
+    'pl': {
+        'precyzja': 'porownanie_precyzja',
+        'czułość': 'porownanie_czułość',
+        'F1': 'porownanie_f1',
+        'F2': 'porownanie_f2',
+        'MCC': 'porownanie_mcc',
+    },
+    'en': {
+        'precyzja': 'comparison_precision',
+        'czułość': 'comparison_recall',
+        'F1': 'comparison_f1',
+        'F2': 'comparison_f2',
+        'MCC': 'comparison_mcc',
+    },
+}
+
+
+def translate_metric(metric: str, language: str = 'pl') -> str:
+    return METRIC_LABELS.get(metric, {}).get(language, metric)
+
+
+def translate_approach(approach: str, language: str = 'pl') -> str:
+    return APPROACH_LABELS.get(approach, {}).get(language, approach)
+
+
+def get_output_stem(key: str, language: str = 'pl') -> str:
+    return OUTPUT_FILE_NAMES.get(language, OUTPUT_FILE_NAMES['pl']).get(key, key)
+
+
+def get_metric_output_stem(metric: str, language: str = 'pl') -> str:
+    return METRIC_FILE_STEMS.get(language, METRIC_FILE_STEMS['pl']).get(metric, metric.lower().replace(' ', '_'))
+
 # Ustawienia dla profesjonalnych wykresów do pracy magisterskiej
 plt.rcParams.update({
     'font.family': 'serif',
@@ -192,7 +296,7 @@ def calculate_metrics(data: dict) -> dict:
     }
 
 
-def create_comparison_bar_chart(results: dict, metrics: list, output_path: str, title: str):
+def create_comparison_bar_chart(results: dict, metrics: list, output_path: str, title: str, language: str = 'pl'):
     """
     Tworzy wykres słupkowy porównujący metryki dla różnych konfiguracji.
     
@@ -227,17 +331,32 @@ def create_comparison_bar_chart(results: dict, metrics: list, output_path: str, 
                     values.append(0)
 
             offset = (j - (len(approaches) - 1) / 2) * width
-            ax.bar(x + offset, values, width, label=approach, color=color, edgecolor='black', linewidth=0.4)
+            ax.bar(
+                x + offset,
+                values,
+                width,
+                label=translate_approach(approach, language),
+                color=color,
+                edgecolor='black',
+                linewidth=0.4,
+            )
 
-        ax.set_title(
-            f'Porównanie miary {metric} dla wybranych dużych modeli językowych\n'
-            f'oraz podejścia klasycznego i autorskiego łańcuchowego'
-        )
+        metric_label = translate_metric(metric, language)
+        if language == 'en':
+            ax.set_title(
+                f'Comparison of {metric_label} across selected large language models\n'
+                f'and the single-agent and multi-agent approaches'
+            )
+        else:
+            ax.set_title(
+                f'Porównanie miary {metric_label} dla wybranych dużych modeli językowych\n'
+                f'oraz podejścia klasycznego i autorskiego łańcuchowego'
+            )
         ax.set_xticks(x)
         ax.set_xticklabels(models, rotation=0)
         ax.set_ylim(0, 1.15)
         ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
-        ax.set_ylabel('Wartość miary' if idx % 2 == 0 else '')
+        ax.set_ylabel('Metric value' if language == 'en' and idx % 2 == 0 else 'Wartość miary' if idx % 2 == 0 else '')
 
     # Ukryj ewentualne nadmiarowe osie
     for k in range(len(metrics[:4]), 4):
@@ -255,7 +374,7 @@ def create_comparison_bar_chart(results: dict, metrics: list, output_path: str, 
     print(f"Zapisano wykres: {output_path}")
 
 
-def create_model_comparison_chart(results: dict, output_dir: str):
+def create_model_comparison_chart(results: dict, output_dir: str, language: str = 'pl'):
     """
     Tworzy pojedyncze wykresy dla każdej metryki, porównując wszystkie modele.
     
@@ -290,7 +409,7 @@ def create_model_comparison_chart(results: dict, output_dir: str):
                     present_mask.append(False)
 
             offset = (j - (len(approaches) - 1) / 2) * width
-            rects = ax.bar(x + offset, values, width, label=approach, color=color,
+            rects = ax.bar(x + offset, values, width, label=translate_approach(approach, language), color=color,
                            edgecolor='black', linewidth=0.4)
 
             for rect, value, is_present in zip(rects, values, present_mask):
@@ -303,11 +422,18 @@ def create_model_comparison_chart(results: dict, output_dir: str):
                                 textcoords="offset points",
                                 ha='center', va='bottom', fontsize=8)
 
-        ax.set_ylabel('Wartość miary')
-        ax.set_title(
-            f'Porównanie miary {metric} dla wybranych dużych modeli językowych\n'
-            f'oraz podejścia klasycznego i autorskiego łańcuchowego'
-        )
+        metric_label = translate_metric(metric, language)
+        ax.set_ylabel('Metric value' if language == 'en' else 'Wartość miary')
+        if language == 'en':
+            ax.set_title(
+                f'Comparison of {metric_label} across selected large language models\n'
+                f'and the single-agent and multi-agent approaches'
+            )
+        else:
+            ax.set_title(
+                f'Porównanie miary {metric_label} dla wybranych dużych modeli językowych\n'
+                f'oraz podejścia klasycznego i autorskiego łańcuchowego'
+            )
         ax.set_xticks(x)
         ax.set_xticklabels(models)
         ax.legend(loc='upper right', framealpha=0.9)
@@ -320,7 +446,7 @@ def create_model_comparison_chart(results: dict, output_dir: str):
 
         plt.tight_layout()
 
-        output_path = os.path.join(output_dir, f'porownanie_{metric.lower().replace(" ", "_")}.png')
+        output_path = os.path.join(output_dir, f'{get_metric_output_stem(metric, language)}.png')
         plt.savefig(output_path, format='png', bbox_inches='tight')
         plt.savefig(output_path.replace('.png', '.pdf'), format='pdf', bbox_inches='tight')
         plt.close()
@@ -328,7 +454,7 @@ def create_model_comparison_chart(results: dict, output_dir: str):
         print(f"Zapisano wykres: {output_path}")
 
 
-def create_radar_chart(results: dict, output_dir: str):
+def create_radar_chart(results: dict, output_dir: str, language: str = 'pl'):
     """
     Tworzy wykres radarowy porównujący wszystkie metryki.
     
@@ -355,24 +481,31 @@ def create_radar_chart(results: dict, output_dir: str):
                 values = [metrics_data[m] for m in metrics]
                 values += values[:1]  # Zamknięcie wykresu
                 
-                label = f"{model_name} - {config_name}"
+                label = f"{model_name} - {translate_approach(config_name, language)}"
                 ax.plot(angles, values, 'o-', linewidth=2, label=label, color=colors[color_idx])
                 ax.fill(angles, values, alpha=0.1, color=colors[color_idx])
                 color_idx += 1
     
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(metrics)
+    ax.set_xticklabels([translate_metric(metric, language) for metric in metrics])
     ax.set_ylim(0, 1)
     ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0), fontsize=8)
-    ax.set_title(
-        'Porównanie miar: czułości, precyzji, miary F1 i miary F2\n'
-        'dla wybranych dużych modeli językowych oraz podejścia klasycznego i autorskiego łańcuchowego',
-        y=1.08,
-    )
+    if language == 'en':
+        ax.set_title(
+            'Comparison of Recall, Precision, F1, and F2\n'
+            'across selected large language models and the single-agent and multi-agent approaches',
+            y=1.08,
+        )
+    else:
+        ax.set_title(
+            'Porównanie miar: czułości, precyzji, miary F1 i miary F2\n'
+            'dla wybranych dużych modeli językowych oraz podejścia klasycznego i autorskiego łańcuchowego',
+            y=1.08,
+        )
     
     plt.tight_layout()
     
-    output_path = os.path.join(output_dir, 'wykres_radarowy.png')
+    output_path = os.path.join(output_dir, f'{get_output_stem("radar_chart", language)}.png')
     plt.savefig(output_path, format='png', bbox_inches='tight')
     plt.savefig(output_path.replace('.png', '.pdf'), format='pdf', bbox_inches='tight')
     plt.close()
@@ -380,7 +513,7 @@ def create_radar_chart(results: dict, output_dir: str):
     print(f"Zapisano wykres: {output_path}")
 
 
-def create_heatmap(results: dict, output_dir: str):
+def create_heatmap(results: dict, output_dir: str, language: str = 'pl'):
     """
     Tworzy mapę cieplną z wszystkimi metrykami.
     
@@ -398,7 +531,7 @@ def create_heatmap(results: dict, output_dir: str):
         for config_name, data in configs.items():
             if data:
                 metrics_data = calculate_metrics(data)
-                labels.append(f"{model_name}\n{config_name}")
+                labels.append(f"{model_name}\n{translate_approach(config_name, language)}")
                 data_matrix.append([metrics_data[m] for m in metrics])
     
     if not data_matrix:
@@ -418,7 +551,7 @@ def create_heatmap(results: dict, output_dir: str):
     # Ustawienia osi
     ax.set_xticks(np.arange(len(metrics)))
     ax.set_yticks(np.arange(len(labels)))
-    ax.set_xticklabels(metrics)
+    ax.set_xticklabels([translate_metric(metric, language) for metric in metrics])
     ax.set_yticklabels(labels)
     
     # Rotacja etykiet osi X
@@ -433,19 +566,26 @@ def create_heatmap(results: dict, output_dir: str):
             text = ax.text(j, i, f'{real_val:.2f}',
                           ha="center", va="center", color=text_color, fontsize=10)
     
-    ax.set_title(
-        'Porównanie miar: czułości, precyzji, miary F1, miary F2 i miary MCC\n'
-        'w mapie cieplnej dla wybranych dużych modeli językowych\n'
-        'oraz podejścia klasycznego i autorskiego łańcuchowego'
-    )
+    if language == 'en':
+        ax.set_title(
+            'Heatmap of Recall, Precision, F1, F2, and MCC\n'
+            'for selected large language models\n'
+            'and the single-agent and multi-agent approaches'
+        )
+    else:
+        ax.set_title(
+            'Porównanie miar: czułości, precyzji, miary F1, miary F2 i miary MCC\n'
+            'w mapie cieplnej dla wybranych dużych modeli językowych\n'
+            'oraz podejścia klasycznego i autorskiego łańcuchowego'
+        )
     
     # Pasek kolorów
     cbar = ax.figure.colorbar(im, ax=ax, shrink=0.8)
-    cbar.ax.set_ylabel('Wartość miary', rotation=-90, va="bottom")
+    cbar.ax.set_ylabel('Metric value' if language == 'en' else 'Wartość miary', rotation=-90, va="bottom")
     
     plt.tight_layout()
     
-    output_path = os.path.join(output_dir, 'mapa_cieplna.png')
+    output_path = os.path.join(output_dir, f'{get_output_stem("heatmap", language)}.png')
     plt.savefig(output_path, format='png', bbox_inches='tight')
     plt.savefig(output_path.replace('.png', '.pdf'), format='pdf', bbox_inches='tight')
     plt.close()
@@ -453,7 +593,7 @@ def create_heatmap(results: dict, output_dir: str):
     print(f"Zapisano wykres: {output_path}")
 
 
-def create_grouped_metrics_chart(results: dict, output_dir: str):
+def create_grouped_metrics_chart(results: dict, output_dir: str, language: str = 'pl'):
     """
     Tworzy zgrupowany wykres słupkowy dla głównych metryk.
     
@@ -487,7 +627,7 @@ def create_grouped_metrics_chart(results: dict, output_dir: str):
                 present_mask.append(False)
 
         offset = (j - (len(approaches) - 1) / 2) * width
-        rects = ax.bar(x + offset, values, width, label=approach, color=color,
+        rects = ax.bar(x + offset, values, width, label=translate_approach(approach, language), color=color,
                        edgecolor='black', linewidth=0.4)
 
         for rect, value, is_present in zip(rects, values, present_mask):
@@ -498,11 +638,17 @@ def create_grouped_metrics_chart(results: dict, output_dir: str):
                             textcoords="offset points",
                             ha='center', va='bottom', fontsize=8)
 
-    ax.set_ylabel('Średnia wartość metryk')
-    ax.set_title(
-        'Porównanie średniej miar: czułości, precyzji, miary F1 i miary F2\n'
-        'dla wybranych dużych modeli językowych oraz podejścia klasycznego i autorskiego łańcuchowego'
-    )
+    ax.set_ylabel('Average metric value' if language == 'en' else 'Średnia wartość metryk')
+    if language == 'en':
+        ax.set_title(
+            'Average of Recall, Precision, F1, and F2\n'
+            'for selected large language models and the single-agent and multi-agent approaches'
+        )
+    else:
+        ax.set_title(
+            'Porównanie średniej miar: czułości, precyzji, miary F1 i miary F2\n'
+            'dla wybranych dużych modeli językowych oraz podejścia klasycznego i autorskiego łańcuchowego'
+        )
     ax.set_xticks(x)
     ax.set_xticklabels(models)
     ax.legend(loc='upper right', framealpha=0.9)
@@ -511,7 +657,7 @@ def create_grouped_metrics_chart(results: dict, output_dir: str):
 
     plt.tight_layout()
 
-    output_path = os.path.join(output_dir, 'metryki_wszystkie_konfiguracje.png')
+    output_path = os.path.join(output_dir, f'{get_output_stem("grouped_metrics", language)}.png')
     plt.savefig(output_path, format='png', bbox_inches='tight')
     plt.savefig(output_path.replace('.png', '.pdf'), format='pdf', bbox_inches='tight')
     plt.close()
@@ -519,7 +665,7 @@ def create_grouped_metrics_chart(results: dict, output_dir: str):
     print(f"Zapisano wykres: {output_path}")
 
 
-def create_f_scores_comparison(results: dict, output_dir: str):
+def create_f_scores_comparison(results: dict, output_dir: str, language: str = 'pl'):
     """
     Tworzy wykres porównujący wyniki F1 i F2.
     
@@ -541,8 +687,12 @@ def create_f_scores_comparison(results: dict, output_dir: str):
         axes,
         ['F1', 'F2'],
         [
+            'Comparison of F1 across selected large language models\nand the single-agent and multi-agent approaches'
+            if language == 'en' else
             'Porównanie miary F1 dla wybranych dużych modeli językowych\n'
             'oraz podejścia klasycznego i autorskiego łańcuchowego',
+            'Comparison of F2 across selected large language models\nand the single-agent and multi-agent approaches'
+            if language == 'en' else
             'Porównanie miary F2 dla wybranych dużych modeli językowych\n'
             'oraz podejścia klasycznego i autorskiego łańcuchowego',
         ],
@@ -560,7 +710,7 @@ def create_f_scores_comparison(results: dict, output_dir: str):
                     present_mask.append(False)
 
             offset = (j - (len(approaches) - 1) / 2) * width
-            rects = ax.bar(x + offset, values, width, label=approach, color=color,
+            rects = ax.bar(x + offset, values, width, label=translate_approach(approach, language), color=color,
                            edgecolor='black', linewidth=0.4)
 
             for rect, value, is_present in zip(rects, values, present_mask):
@@ -577,17 +727,23 @@ def create_f_scores_comparison(results: dict, output_dir: str):
         ax.set_ylim(0, 1.15)
         ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
 
-    axes[0].set_ylabel('Wartość miary')
-    fig.suptitle(
-        'Porównanie metryk: miary F1 i miary F2 dla wybranych dużych modeli językowych\n'
-        'oraz podejścia klasycznego i autorskiego łańcuchowego'
-    )
+    axes[0].set_ylabel('Metric value' if language == 'en' else 'Wartość miary')
+    if language == 'en':
+        fig.suptitle(
+            'Comparison of F1 and F2 across selected large language models\n'
+            'and the single-agent and multi-agent approaches'
+        )
+    else:
+        fig.suptitle(
+            'Porównanie metryk: miary F1 i miary F2 dla wybranych dużych modeli językowych\n'
+            'oraz podejścia klasycznego i autorskiego łańcuchowego'
+        )
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc='lower center', ncol=min(len(approaches), 3), framealpha=0.9)
 
     plt.tight_layout(rect=[0, 0.08, 1, 0.92])
 
-    output_path = os.path.join(output_dir, 'porownanie_f1_f2.png')
+    output_path = os.path.join(output_dir, f'{get_output_stem("f_scores", language)}.png')
     plt.savefig(output_path, format='png', bbox_inches='tight')
     plt.savefig(output_path.replace('.png', '.pdf'), format='pdf', bbox_inches='tight')
     plt.close()
@@ -595,7 +751,7 @@ def create_f_scores_comparison(results: dict, output_dir: str):
     print(f"Zapisano wykres: {output_path}")
 
 
-def create_precision_recall_chart(results: dict, output_dir: str):
+def create_precision_recall_chart(results: dict, output_dir: str, language: str = 'pl'):
     """
     Tworzy wykres porównujący precyzję i czułość.
     
@@ -617,8 +773,12 @@ def create_precision_recall_chart(results: dict, output_dir: str):
         axes,
         ['precyzja', 'czułość'],
         [
+            'Comparison of Precision across selected large language models\nand the single-agent and multi-agent approaches'
+            if language == 'en' else
             'Porównanie miary precyzji dla wybranych dużych modeli językowych\n'
             'oraz podejścia klasycznego i autorskiego łańcuchowego',
+            'Comparison of Recall across selected large language models\nand the single-agent and multi-agent approaches'
+            if language == 'en' else
             'Porównanie miary czułości dla wybranych dużych modeli językowych\n'
             'oraz podejścia klasycznego i autorskiego łańcuchowego',
         ],
@@ -636,7 +796,7 @@ def create_precision_recall_chart(results: dict, output_dir: str):
                     present_mask.append(False)
 
             offset = (j - (len(approaches) - 1) / 2) * width
-            rects = ax.bar(x + offset, values, width, label=approach, color=color,
+            rects = ax.bar(x + offset, values, width, label=translate_approach(approach, language), color=color,
                            edgecolor='black', linewidth=0.4)
 
             for rect, value, is_present in zip(rects, values, present_mask):
@@ -653,17 +813,23 @@ def create_precision_recall_chart(results: dict, output_dir: str):
         ax.set_ylim(0, 1.15)
         ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
 
-    axes[0].set_ylabel('Wartość miary')
-    fig.suptitle(
-        'Porównanie miar: precyzji i czułości dla wybranych dużych modeli językowych\n'
-        'oraz podejścia klasycznego i autorskiego łańcuchowego'
-    )
+    axes[0].set_ylabel('Metric value' if language == 'en' else 'Wartość miary')
+    if language == 'en':
+        fig.suptitle(
+            'Comparison of Precision and Recall across selected large language models\n'
+            'and the single-agent and multi-agent approaches'
+        )
+    else:
+        fig.suptitle(
+            'Porównanie miar: precyzji i czułości dla wybranych dużych modeli językowych\n'
+            'oraz podejścia klasycznego i autorskiego łańcuchowego'
+        )
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc='lower center', ncol=min(len(approaches), 3), framealpha=0.9)
 
     plt.tight_layout(rect=[0, 0.08, 1, 0.92])
 
-    output_path = os.path.join(output_dir, 'porownanie_precyzja_czulosc.png')
+    output_path = os.path.join(output_dir, f'{get_output_stem("precision_recall", language)}.png')
     plt.savefig(output_path, format='png', bbox_inches='tight')
     plt.savefig(output_path.replace('.png', '.pdf'), format='pdf', bbox_inches='tight')
     plt.close()
@@ -671,7 +837,7 @@ def create_precision_recall_chart(results: dict, output_dir: str):
     print(f"Zapisano wykres: {output_path}")
 
 
-def create_mcc_balanced_accuracy_chart(results: dict, output_dir: str):
+def create_mcc_balanced_accuracy_chart(results: dict, output_dir: str, language: str = 'pl'):
     """
     Tworzy wykres porównujący MCC i zbalansowaną dokładność.
 
@@ -692,6 +858,8 @@ def create_mcc_balanced_accuracy_chart(results: dict, output_dir: str):
     chart_setup = [
         (
             'MCC',
+            'Comparison of MCC across selected large language models\nand the single-agent and multi-agent approaches'
+            if language == 'en' else
             'Porównanie miary MCC dla wybranych dużych modeli językowych\n'
             'oraz podejścia klasycznego i autorskiego łańcuchowego',
             (-1.05, 1.05),
@@ -699,6 +867,8 @@ def create_mcc_balanced_accuracy_chart(results: dict, output_dir: str):
         ),
         (
             'Zbalansowana dokładność',
+            'Comparison of Balanced Accuracy across selected large language models\nand the single-agent and multi-agent approaches'
+            if language == 'en' else
             'Porównanie zbalansowanej dokładności dla wybranych dużych modeli językowych\n'
             'oraz podejścia klasycznego i autorskiego łańcuchowego',
             (0, 1.05),
@@ -724,7 +894,7 @@ def create_mcc_balanced_accuracy_chart(results: dict, output_dir: str):
                 x + offset,
                 values,
                 width,
-                label=approach,
+                label=translate_approach(approach, language),
                 color=color,
                 edgecolor='black',
                 linewidth=0.4,
@@ -751,17 +921,23 @@ def create_mcc_balanced_accuracy_chart(results: dict, output_dir: str):
         else:
             ax.axhline(0, color='black', linewidth=0.8, alpha=0.7)
 
-    axes[0].set_ylabel('Wartość miary')
-    fig.suptitle(
-        'Porównanie skuteczności detekcji podatności: MCC i zbalansowana dokładność\n'
-        'dla wybranych dużych modeli językowych oraz podejścia klasycznego i autorskiego łańcuchowego'
-    )
+    axes[0].set_ylabel('Metric value' if language == 'en' else 'Wartość miary')
+    if language == 'en':
+        fig.suptitle(
+            'Comparison of vulnerability detection effectiveness: MCC and Balanced Accuracy\n'
+            'for selected large language models and the single-agent and multi-agent approaches'
+        )
+    else:
+        fig.suptitle(
+            'Porównanie skuteczności detekcji podatności: MCC i zbalansowana dokładność\n'
+            'dla wybranych dużych modeli językowych oraz podejścia klasycznego i autorskiego łańcuchowego'
+        )
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc='lower center', ncol=min(len(approaches), 3), framealpha=0.9)
 
     plt.tight_layout(rect=[0, 0.08, 1, 0.92])
 
-    output_path = os.path.join(output_dir, 'porownanie_mcc_balanced_accuracy.png')
+    output_path = os.path.join(output_dir, f'{get_output_stem("mcc_balanced_accuracy", language)}.png')
     plt.savefig(output_path, format='png', bbox_inches='tight')
     plt.savefig(output_path.replace('.png', '.pdf'), format='pdf', bbox_inches='tight')
     plt.close()
@@ -769,7 +945,7 @@ def create_mcc_balanced_accuracy_chart(results: dict, output_dir: str):
     print(f"Zapisano wykres: {output_path}")
 
 
-def create_precision_recall_scatter(results: dict, output_dir: str):
+def create_precision_recall_scatter(results: dict, output_dir: str, language: str = 'pl'):
     """
     Tworzy wykres rozrzutu precyzja-czułość z rozmiarem punktu zależnym od F1.
 
@@ -816,7 +992,7 @@ def create_precision_recall_scatter(results: dict, output_dir: str):
             )
 
             ax.annotate(
-                f"{model}\n{approach}",
+                f"{model}\n{translate_approach(approach, language)}",
                 (recall, precision),
                 textcoords='offset points',
                 xytext=(6, 6),
@@ -829,16 +1005,22 @@ def create_precision_recall_scatter(results: dict, output_dir: str):
         plt.close(fig)
         return
 
-    ax.set_xlabel('Czułość (Recall)')
-    ax.set_ylabel('Precyzja (Precision)')
+    ax.set_xlabel('Recall' if language == 'en' else 'Czułość (Recall)')
+    ax.set_ylabel('Precision' if language == 'en' else 'Precyzja (Precision)')
     ax.set_xlim(0, 1.02)
     ax.set_ylim(0, 1.02)
     ax.xaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
     ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
-    ax.set_title(
-        'Relacja precyzja-czułość dla detekcji podatności\n'
-        'Kolor punktu = model, kształt punktu = podejście, rozmiar punktu = F1'
-    )
+    if language == 'en':
+        ax.set_title(
+            'Precision-Recall relationship for vulnerability detection\n'
+            'Point color = model, marker shape = approach, point size = F1'
+        )
+    else:
+        ax.set_title(
+            'Relacja precyzja-czułość dla detekcji podatności\n'
+            'Kolor punktu = model, kształt punktu = podejście, rozmiar punktu = F1'
+        )
 
     model_legend_items = [
         Line2D(
@@ -873,13 +1055,13 @@ def create_precision_recall_scatter(results: dict, output_dir: str):
 
     legend1 = ax.legend(handles=model_legend_items, title='Model', loc='lower left', framealpha=0.9)
     ax.add_artist(legend1)
-    legend2 = ax.legend(handles=approach_legend_items, title='Podejście', loc='upper left', framealpha=0.9)
+    legend2 = ax.legend(handles=approach_legend_items, title='Approach' if language == 'en' else 'Podejście', loc='upper left', framealpha=0.9)
     ax.add_artist(legend2)
-    ax.legend(handles=size_legend_items, title='Rozmiar (F1)', loc='lower right', framealpha=0.9)
+    ax.legend(handles=size_legend_items, title='Size (F1)' if language == 'en' else 'Rozmiar (F1)', loc='lower right', framealpha=0.9)
 
     plt.tight_layout()
 
-    output_path = os.path.join(output_dir, 'scatter_precyzja_czulosc_f1.png')
+    output_path = os.path.join(output_dir, f'{get_output_stem("scatter", language)}.png')
     plt.savefig(output_path, format='png', bbox_inches='tight')
     plt.savefig(output_path.replace('.png', '.pdf'), format='pdf', bbox_inches='tight')
     plt.close()
@@ -887,7 +1069,7 @@ def create_precision_recall_scatter(results: dict, output_dir: str):
     print(f"Zapisano wykres: {output_path}")
 
 
-def generate_summary_table(results: dict, output_dir: str):
+def generate_summary_table(results: dict, output_dir: str, language: str = 'pl'):
     """
     Generuje tabelę podsumowującą wszystkie wyniki.
     
@@ -895,15 +1077,18 @@ def generate_summary_table(results: dict, output_dir: str):
         results: Słownik z wynikami
         output_dir: Folder do zapisu
     """
-    output_path = os.path.join(output_dir, 'tabela_wynikow.txt')
+    output_path = os.path.join(output_dir, f'{get_output_stem("summary_table", language)}.txt')
 
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write("=" * 170 + "\n")
-        f.write("TABELA WYNIKÓW EWALUACJI\n")
+        f.write("EVALUATION RESULTS TABLE\n" if language == 'en' else "TABELA WYNIKÓW EWALUACJI\n")
         f.write("=" * 170 + "\n\n")
 
+        config_label = 'Configuration' if language == 'en' else 'Konfiguracja'
+        precision_label = 'precision' if language == 'en' else 'precyzja'
+        recall_label = 'recall' if language == 'en' else 'czułość'
         header = (
-            f"{'Model':<20} {'Konfiguracja':<30} {'precyzja':>10} {'czułość':>10} {'F1':>10} {'F2':>10} "
+            f"{'Model':<20} {config_label:<30} {precision_label:>10} {recall_label:>10} {'F1':>10} {'F2':>10} "
             f"{'MCC':>10} {'bal_acc':>10} {'FPR':>10} {'FNR':>10} {'TP':>8} {'FP':>8} {'TN':>8} {'FN':>8}\n"
         )
         f.write(header)
@@ -914,7 +1099,7 @@ def generate_summary_table(results: dict, output_dir: str):
                 if data:
                     metrics = calculate_metrics(data)
                     row = (
-                        f"{model_name:<20} {config_name:<30} {metrics['precyzja']:>10.4f} {metrics['czułość']:>10.4f} "
+                        f"{model_name:<20} {translate_approach(config_name, language):<30} {metrics['precyzja']:>10.4f} {metrics['czułość']:>10.4f} "
                         f"{metrics['F1']:>10.4f} {metrics['F2']:>10.4f} {metrics['MCC']:>10.4f} "
                         f"{metrics['Zbalansowana dokładność']:>10.4f} {metrics['FPR']:>10.4f} {metrics['FNR']:>10.4f} "
                         f"{metrics['TP']:>8} {metrics['FP']:>8} {metrics['TN']:>8} {metrics['FN']:>8}\n"
@@ -926,15 +1111,19 @@ def generate_summary_table(results: dict, output_dir: str):
     print(f"Zapisano tabelę: {output_path}")
 
     # Generowanie również w formacie LaTeX
-    latex_path = os.path.join(output_dir, 'tabela_wynikow.tex')
+    latex_path = os.path.join(output_dir, f'{get_output_stem("summary_table", language)}.tex')
     with open(latex_path, 'w', encoding='utf-8') as f:
         f.write("\\begin{table}[htbp]\n")
         f.write("\\centering\n")
-        f.write("\\caption{Wyniki ewaluacji modeli}\n")
-        f.write("\\label{tab:wyniki}\n")
+        f.write("\\caption{Model evaluation results}\n" if language == 'en' else "\\caption{Wyniki ewaluacji modeli}\n")
+        f.write("\\label{tab:results}\n" if language == 'en' else "\\label{tab:wyniki}\n")
         f.write("\\begin{tabular}{llcccccc}\n")
         f.write("\\toprule\n")
-        f.write("Model & Konfiguracja & precyzja & czułość & F1 & F2 & MCC & BalAcc \\\\n")
+        f.write(
+            "Model & Configuration & precision & recall & F1 & F2 & MCC & BalAcc \\\n"
+            if language == 'en' else
+            "Model & Konfiguracja & precyzja & czułość & F1 & F2 & MCC & BalAcc \\\n"
+        )
         f.write("\\midrule\n")
 
         for model_name, configs in results.items():
@@ -942,7 +1131,7 @@ def generate_summary_table(results: dict, output_dir: str):
                 if data:
                     metrics = calculate_metrics(data)
                     f.write(
-                        f"{model_name} & {config_name} & {metrics['precyzja']:.4f} & {metrics['czułość']:.4f} "
+                        f"{model_name} & {translate_approach(config_name, language)} & {metrics['precyzja']:.4f} & {metrics['czułość']:.4f} "
                         f"& {metrics['F1']:.4f} & {metrics['F2']:.4f} & {metrics['MCC']:.4f} "
                         f"& {metrics['Zbalansowana dokładność']:.4f} \\\\n"
                     )
@@ -954,44 +1143,49 @@ def generate_summary_table(results: dict, output_dir: str):
     print(f"Zapisano tabelę LaTeX: {latex_path}")
 
 
-def generate_all_charts(results: dict, charts_dir: str, metrics: list):
+def generate_all_charts(results: dict, charts_dir: str, metrics: list, language: str = 'pl'):
     """Generuje wszystkie wykresy dla podanych wyników."""
     # 1. Główny wykres porównawczy
     create_comparison_bar_chart(
         results, 
         metrics, 
-        os.path.join(charts_dir, 'porownanie_glowne.png'),
+        os.path.join(charts_dir, f'{get_output_stem("main_comparison", language)}.png'),
+        'Comparison of Recall, Precision, F1, and F2\n'
+        'across selected large language models\n'
+        'and the single-agent and multi-agent approaches'
+        if language == 'en' else
         'Porównanie miar: czułości, precyzji, miary F1 i miary F2\n'
         'dla wybranych dużych modeli językowych\n'
-        'oraz podejścia klasycznego i autorskiego łańcuchowego'
+        'oraz podejścia klasycznego i autorskiego łańcuchowego',
+        language=language,
     )
     
     # 2. Wykresy dla poszczególnych modeli
-    create_model_comparison_chart(results, charts_dir)
+    create_model_comparison_chart(results, charts_dir, language=language)
     
     # 3. Wykres radarowy
-    create_radar_chart(results, charts_dir)
+    create_radar_chart(results, charts_dir, language=language)
     
     # 4. Mapa cieplna
-    create_heatmap(results, charts_dir)
+    create_heatmap(results, charts_dir, language=language)
     
     # 5. Zgrupowany wykres metryk
-    create_grouped_metrics_chart(results, charts_dir)
+    create_grouped_metrics_chart(results, charts_dir, language=language)
     
     # 6. Porównanie F1 i F2
-    create_f_scores_comparison(results, charts_dir)
+    create_f_scores_comparison(results, charts_dir, language=language)
     
     # 7. Porównanie precyzji i czułości
-    create_precision_recall_chart(results, charts_dir)
+    create_precision_recall_chart(results, charts_dir, language=language)
 
     # 8. Porównanie MCC i zbalansowanej dokładności
-    create_mcc_balanced_accuracy_chart(results, charts_dir)
+    create_mcc_balanced_accuracy_chart(results, charts_dir, language=language)
 
     # 9. Wykres rozrzutu precyzja-czułość z rozmiarem punktu zależnym od F1
-    create_precision_recall_scatter(results, charts_dir)
+    create_precision_recall_scatter(results, charts_dir, language=language)
     
     # 10. Tabela podsumowująca
-    generate_summary_table(results, charts_dir)
+    generate_summary_table(results, charts_dir, language=language)
 
 
 def main():
@@ -1032,40 +1226,74 @@ def main():
         print("-" * 40)
         generate_all_charts(results_full, charts_dir, metrics)
         print(f"\nWykresy zapisane w: {charts_dir}")
+
+        print("\n--- Full English version ---")
+        charts_dir_english = os.path.join(script_dir, 'charts', ENGLISH_CHARTS_SUBDIR)
+        os.makedirs(charts_dir_english, exist_ok=True)
+        print("\nGenerating charts...")
+        print("-" * 40)
+        generate_all_charts(results_full, charts_dir_english, metrics, language='en')
+        print(f"\nCharts saved in: {charts_dir_english}")
         
         print("\n--- Wersja bez RAG hunter ---")
-        charts_dir_no_hunter = os.path.join(script_dir, 'charts', 'bez_ragonhunter')
+        charts_dir_no_hunter = os.path.join(script_dir, 'charts', NO_RAGONHUNTER_CHARTS_SUBDIR)
         os.makedirs(charts_dir_no_hunter, exist_ok=True)
         results_no_hunter = load_results(results_dir, exclude_ragonhunter=True, exclude_all_rag=False)
         print("\nGenerowanie wykresów...")
         print("-" * 40)
         generate_all_charts(results_no_hunter, charts_dir_no_hunter, metrics)
         print(f"\nWykresy zapisane w: {charts_dir_no_hunter}")
+
+        print("\n--- English version without RAG hunter ---")
+        charts_dir_english_no_hunter = os.path.join(
+            script_dir,
+            'charts',
+            ENGLISH_CHARTS_SUBDIR,
+            NO_RAGONHUNTER_CHARTS_SUBDIR,
+        )
+        os.makedirs(charts_dir_english_no_hunter, exist_ok=True)
+        print("\nGenerating charts...")
+        print("-" * 40)
+        generate_all_charts(results_no_hunter, charts_dir_english_no_hunter, metrics, language='en')
+        print(f"\nCharts saved in: {charts_dir_english_no_hunter}")
         
         print("\n--- Wersja bez RAG (tylko podstawowe konfiguracje) ---")
-        charts_dir_no_rag = os.path.join(script_dir, 'charts', 'bez_rag')
+        charts_dir_no_rag = os.path.join(script_dir, 'charts', NO_RAG_CHARTS_SUBDIR)
         os.makedirs(charts_dir_no_rag, exist_ok=True)
         results_no_rag = load_results(results_dir, exclude_ragonhunter=False, exclude_all_rag=True)
         print("\nGenerowanie wykresów...")
         print("-" * 40)
         generate_all_charts(results_no_rag, charts_dir_no_rag, metrics)
         print(f"\nWykresy zapisane w: {charts_dir_no_rag}")
+
+        print("\n--- English version without RAG ---")
+        charts_dir_english_no_rag = os.path.join(
+            script_dir,
+            'charts',
+            ENGLISH_CHARTS_SUBDIR,
+            NO_RAG_CHARTS_SUBDIR,
+        )
+        os.makedirs(charts_dir_english_no_rag, exist_ok=True)
+        print("\nGenerating charts...")
+        print("-" * 40)
+        generate_all_charts(results_no_rag, charts_dir_english_no_rag, metrics, language='en')
+        print(f"\nCharts saved in: {charts_dir_english_no_rag}")
     elif args.no_rag:
         # Tylko wersja bez RAG
-        charts_dir = os.path.join(script_dir, 'charts', 'bez_rag')
+        charts_dir = os.path.join(script_dir, 'charts', ENGLISH_CHARTS_SUBDIR, NO_RAG_CHARTS_SUBDIR)
         os.makedirs(charts_dir, exist_ok=True)
         results = load_results(results_dir, exclude_ragonhunter=False, exclude_all_rag=True)
-        print("\nGenerowanie wykresów (bez RAG)...")
+        print("\nGenerating English charts (without RAG)...")
         print("-" * 40)
-        generate_all_charts(results, charts_dir, metrics)
+        generate_all_charts(results, charts_dir, metrics, language='en')
     elif args.no_ragonhunter:
         # Tylko wersja bez RAG hunter
-        charts_dir = os.path.join(script_dir, 'charts', 'bez_ragonhunter')
+        charts_dir = os.path.join(script_dir, 'charts', ENGLISH_CHARTS_SUBDIR, NO_RAGONHUNTER_CHARTS_SUBDIR)
         os.makedirs(charts_dir, exist_ok=True)
         results = load_results(results_dir, exclude_ragonhunter=True, exclude_all_rag=False)
-        print("\nGenerowanie wykresów (bez RAG hunter)...")
+        print("\nGenerating English charts (without RAG hunter)...")
         print("-" * 40)
-        generate_all_charts(results, charts_dir, metrics)
+        generate_all_charts(results, charts_dir, metrics, language='en')
     else:
         # Domyślnie - pełna wersja
         results = load_results(results_dir, exclude_ragonhunter=False, exclude_all_rag=False)
@@ -1073,6 +1301,13 @@ def main():
         print("\nGenerowanie wykresów...")
         print("-" * 40)
         generate_all_charts(results, charts_dir, metrics)
+
+        charts_dir_english = os.path.join(script_dir, 'charts', ENGLISH_CHARTS_SUBDIR)
+        os.makedirs(charts_dir_english, exist_ok=True)
+        print("\nGenerating English charts...")
+        print("-" * 40)
+        generate_all_charts(results, charts_dir_english, metrics, language='en')
+        print(f"\nCharts saved in: {charts_dir_english}")
     
     print()
     print("=" * 60)
